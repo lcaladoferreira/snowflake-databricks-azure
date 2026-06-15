@@ -1,41 +1,58 @@
 import os
+import logging
+from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 
 load_dotenv()
 
+# Structured Logging Setup
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
 class Config:
-    EXECUTION_MODE = os.getenv("EXECUTION_MODE", "demo").lower()
+    """Central configuration management for the migration accelerator."""
+
+    # Execution Environment
+    ENV: str = os.getenv("ENV", "dev").lower()
+    EXECUTION_MODE: str = os.getenv("EXECUTION_MODE", "demo").lower()
 
     # Databricks
-    DATABRICKS_HOST = os.getenv("DATABRICKS_HOST")
-    DATABRICKS_TOKEN = os.getenv("DATABRICKS_TOKEN")
+    DATABRICKS_HOST: Optional[str] = os.getenv("DATABRICKS_HOST")
+    DATABRICKS_TOKEN: Optional[str] = os.getenv("DATABRICKS_TOKEN")
 
     # Snowflake
-    SNOWFLAKE_ACCOUNT = os.getenv("SNOWFLAKE_ACCOUNT")
-    SNOWFLAKE_USER = os.getenv("SNOWFLAKE_USER")
-    SNOWFLAKE_PASSWORD = os.getenv("SNOWFLAKE_PASSWORD")
-    SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_WAREHOUSE")
-    SNOWFLAKE_DATABASE = os.getenv("SNOWFLAKE_DATABASE")
-    SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_SCHEMA")
+    SNOWFLAKE_ACCOUNT: Optional[str] = os.getenv("SNOWFLAKE_ACCOUNT")
+    SNOWFLAKE_USER: Optional[str] = os.getenv("SNOWFLAKE_USER")
+    SNOWFLAKE_PASSWORD: Optional[str] = os.getenv("SNOWFLAKE_PASSWORD")
+    SNOWFLAKE_WAREHOUSE: Optional[str] = os.getenv("SNOWFLAKE_WAREHOUSE")
+    SNOWFLAKE_DATABASE: Optional[str] = os.getenv("SNOWFLAKE_DATABASE")
+    SNOWFLAKE_SCHEMA: Optional[str] = os.getenv("SNOWFLAKE_SCHEMA")
+    SNOWFLAKE_ROLE: Optional[str] = os.getenv("SNOWFLAKE_ROLE")
 
-    # Storage Bases
-    LOCAL_DATA_DIR = "data"
-    ADLS_BASE_PATH = os.getenv("ADLS_BASE_PATH", "abfss://landing@stdatalakeprod.dfs.core.windows.net")
+    # Azure Storage (ADLS Gen2)
+    ADLS_ACCOUNT_NAME: Optional[str] = os.getenv("ADLS_ACCOUNT_NAME")
+    ADLS_CONTAINER: str = os.getenv("ADLS_CONTAINER", "lakehouse")
+    ADLS_BASE_PATH: str = os.getenv("ADLS_BASE_PATH", f"abfss://{ADLS_CONTAINER}@{ADLS_ACCOUNT_NAME}.dfs.core.windows.net")
 
-    # Local Paths (always needed for Demo)
-    RAW_DIR = os.path.join(LOCAL_DATA_DIR, "raw")
-    BRONZE_DIR = os.path.join(LOCAL_DATA_DIR, "bronze")
-    SILVER_DIR = os.path.join(LOCAL_DATA_DIR, "silver")
-    GOLD_DIR = os.path.join(LOCAL_DATA_DIR, "gold")
+    # Local Paths (Demo Mode)
+    LOCAL_DATA_DIR: str = "data"
 
     # Unity Catalog
-    UC_CATALOG = os.getenv("UC_CATALOG", "main")
-    UC_BRONZE_SCHEMA = os.getenv("UC_BRONZE_SCHEMA", "bronze")
-    UC_SILVER_SCHEMA = os.getenv("UC_SILVER_SCHEMA", "silver")
-    UC_GOLD_SCHEMA = os.getenv("UC_GOLD_SCHEMA", "gold")
+    UC_CATALOG: str = os.getenv("UC_CATALOG", f"migration_{ENV}")
+    UC_BRONZE_SCHEMA: str = "bronze"
+    UC_SILVER_SCHEMA: str = "silver"
+    UC_GOLD_SCHEMA: str = "gold"
 
     @classmethod
-    def get_storage_path(cls, layer, table_name=""):
+    def get_logger(cls, name: str) -> logging.Logger:
+        """Returns a configured logger instance."""
+        return logging.getLogger(name)
+
+    @classmethod
+    def get_storage_path(cls, layer: str, table_name: str = "") -> str:
+        """Constructs the storage path for a given layer and table."""
         if cls.EXECUTION_MODE == "demo":
             base = os.path.join(cls.LOCAL_DATA_DIR, layer)
         else:
@@ -44,9 +61,14 @@ class Config:
         return os.path.join(base, table_name) if table_name else base
 
     @classmethod
-    def get_dbutils(cls, spark):
-        try:
-            from pyspark.dbutils import DBUtils
-            return DBUtils(spark)
-        except ImportError:
-            return None
+    def get_snowflake_config(cls) -> Dict[str, Any]:
+        """Returns Snowflake connection parameters."""
+        return {
+            "account": cls.SNOWFLAKE_ACCOUNT,
+            "user": cls.SNOWFLAKE_USER,
+            "password": cls.SNOWFLAKE_PASSWORD,
+            "warehouse": cls.SNOWFLAKE_WAREHOUSE,
+            "database": cls.SNOWFLAKE_DATABASE,
+            "schema": cls.SNOWFLAKE_SCHEMA,
+            "role": cls.SNOWFLAKE_ROLE
+        }

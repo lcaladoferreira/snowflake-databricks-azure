@@ -1,17 +1,17 @@
-import pytest
-import os
+import unittest
 from src.config.config import Config
 
-def test_config_demo_mode():
-    assert Config.EXECUTION_MODE in ["demo", "production"]
-    assert Config.LOCAL_DATA_DIR == "data"
+class TestConfig(unittest.TestCase):
+    def test_get_storage_path_demo(self):
+        Config.EXECUTION_MODE = "demo"
+        path = Config.get_storage_path("bronze", "customers")
+        self.assertEqual(path, "data/bronze/customers")
 
-def test_directory_structure():
-    required_dirs = ["data/sample", "src/config", "jobs/bronze", "sql/unity_catalog"]
-    for d in required_dirs:
-        assert os.path.isdir(d)
+    def test_get_storage_path_prod(self):
+        Config.EXECUTION_MODE = "production"
+        Config.ADLS_BASE_PATH = "abfss://lake@acc.dfs.core.windows.net"
+        path = Config.get_storage_path("bronze", "customers")
+        self.assertEqual(path, "abfss://lake@acc.dfs.core.windows.net/bronze/customers")
 
-def test_sample_data_exists():
-    # This assumes generate_sample_data.py has been run
-    assert os.path.exists("data/sample/customers.csv")
-    assert os.path.exists("data/sample/orders.csv")
+if __name__ == '__main__':
+    unittest.main()

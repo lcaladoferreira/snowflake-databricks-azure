@@ -1,33 +1,43 @@
--- 1. Create Catalog
+-- unity_catalog_setup.sql
+-- Production governance for Medallion Architecture
+
+-- 1. External Locations & Storage Credentials
+-- Assumes Terraform has created the storage account and managed identity
+CREATE STORAGE CREDENTIAL IF NOT EXISTS `azure_storage_cred`
+  IDENTIFIER `managed-identity-id`
+  COMMENT 'Managed Identity for ADLS access';
+
+CREATE EXTERNAL LOCATION IF NOT EXISTS `landing_zone`
+  URL 'abfss://landing@stmigrationprod001.dfs.core.windows.net/'
+  STORAGE CREDENTIAL `azure_storage_cred`;
+
+-- 2. Catalog & Schemas
 CREATE CATALOG IF NOT EXISTS migration_prod;
 USE CATALOG migration_prod;
 
--- 2. Create Schemas
 CREATE SCHEMA IF NOT EXISTS bronze;
 CREATE SCHEMA IF NOT EXISTS silver;
 CREATE SCHEMA IF NOT EXISTS gold;
 
--- 3. Managed Table Examples
--- (Tables are typically created via Spark jobs, but can be defined here)
-CREATE TABLE IF NOT EXISTS gold.dim_customers (
-    customer_id INT,
-    first_name STRING,
-    last_name STRING,
-    email STRING,
-    registration_date TIMESTAMP
-) TBLPROPERTIES (delta.enableChangeDataFeed = true);
+-- 3. Security Roles & Grants
+CREATE GROUP IF NOT EXISTS `data_engineers`;
+CREATE GROUP IF NOT EXISTS `data_analysts`;
 
--- 4. External Location Example
--- CREATE EXTERNAL LOCATION landing_zone
--- URL 'abfss://landing@stdatalakeprod.dfs.core.windows.net/'
--- WITH (STORAGE CREDENTIAL `azure-storage-credential`);
+-- Data Engineer Permissions (Full access to all layers)
+GRANT USAGE ON CATALOG migration_prod TO `data_engineers`;
+GRANT ALL PRIVILEGES ON SCHEMA bronze TO `data_engineers`;
+GRANT ALL PRIVILEGES ON SCHEMA silver TO `data_engineers`;
+GRANT ALL PRIVILEGES ON SCHEMA gold TO `data_engineers`;
 
--- 5. Grants and Permissions
-GRANT USAGE ON CATALOG migration_prod TO `data-analysts`;
-GRANT USE SCHEMA ON SCHEMA gold TO `data-analysts`;
-GRANT SELECT ON ALL TABLES IN SCHEMA gold TO `data-analysts`;
+-- Data Analyst Permissions (Read-only Gold)
+GRANT USAGE ON CATALOG migration_prod TO `data_analysts`;
+GRANT USE SCHEMA ON SCHEMA gold TO `data_analysts`;
+GRANT SELECT ON ALL TABLES IN SCHEMA gold TO `data_analysts`;
 
-GRANT USAGE ON CATALOG migration_prod TO `data-engineers`;
-GRANT ALL PRIVILEGES ON SCHEMA bronze TO `data-engineers`;
-GRANT ALL PRIVILEGES ON SCHEMA silver TO `data-engineers`;
-GRANT ALL PRIVILEGES ON SCHEMA gold TO `data-engineers`;
+-- 4. PII Tagging Example
+ALTER TABLE silver.customers ALTER COLUMN email SET TAGS ('pii' = 'true');
+
+-- 5. Row-Level Security Example (Template)
+-- CREATE FUNCTION gold.customer_mask(email STRING)
+-- RETURN IF(IS_ACCOUNT_GROUP_MEMBER('data_engineers'), email, 'MASKED');
+-- ALTER TABLE gold.dim_customers ALTER COLUMN email SET MASK gold.customer_mask;
