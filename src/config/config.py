@@ -35,7 +35,8 @@ class Config:
     ADLS_ACCOUNT_NAME: Optional[str] = os.getenv("ADLS_ACCOUNT_NAME")
     ADLS_CONTAINER: str = os.getenv("ADLS_CONTAINER", "lakehouse")
     ADLS_BASE_PATH: str = os.getenv(
-        "ADLS_BASE_PATH", f"abfss://{ADLS_CONTAINER}@{ADLS_ACCOUNT_NAME}.dfs.core.windows.net"
+        "ADLS_BASE_PATH",
+        f"abfss://{ADLS_CONTAINER}@{ADLS_ACCOUNT_NAME}.dfs.core.windows.net",
     )
 
     # Local Paths (Demo Mode)

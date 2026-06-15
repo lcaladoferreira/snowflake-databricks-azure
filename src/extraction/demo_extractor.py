@@ -34,7 +34,10 @@ class DemoExtractor:
             df.to_parquet(output_path, index=False)
 
             self.metadata_mgr.log_extraction(
-                batch_id=self.batch_id, table_name=table, row_count=len(df), status="SUCCESS"
+                batch_id=self.batch_id,
+                table_name=table,
+                row_count=len(df),
+                status="SUCCESS",
             )
             logger.info(f"DEMO: Extracted {table} ({len(df)} rows) to {output_path}")
 

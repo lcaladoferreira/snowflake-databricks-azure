@@ -19,7 +19,9 @@ def run_pipeline() -> None:
     Main orchestration function for the Snowflake-to-Databricks migration.
     Supports both DEMO (local) and PRODUCTION (Azure/Snowflake) modes.
     """
-    logger.info(f"Initiating Migration Pipeline (Mode: {Config.EXECUTION_MODE}, Env: {Config.ENV})")
+    logger.info(
+        f"Initiating Migration Pipeline (Mode: {Config.EXECUTION_MODE}, Env: {Config.ENV})"
+    )
 
     try:
         # 1. Extraction Phase
@@ -33,7 +35,9 @@ def run_pipeline() -> None:
             tables = ["CUSTOMERS", "PRODUCTS", "ORDERS", "ORDER_ITEMS", "PAYMENTS"]
             for table in tables:
                 # Incremental for large tables, full for small
-                incremental_col = "UPDATED_AT" if table in ["ORDERS", "PAYMENTS"] else None
+                incremental_col = (
+                    "UPDATED_AT" if table in ["ORDERS", "PAYMENTS"] else None
+                )
                 extractor.extract_table(table, incremental_col=incremental_col)
 
         # Initialize Spark for Medallion Processing
@@ -42,7 +46,13 @@ def run_pipeline() -> None:
 
         # 2. Bronze Phase
         logger.info("--- Phase 2: Bronze Ingestion ---")
-        tables_to_ingest = ["customers", "products", "orders", "order_items", "payments"]
+        tables_to_ingest = [
+            "customers",
+            "products",
+            "orders",
+            "order_items",
+            "payments",
+        ]
         for table in tables_to_ingest:
             ingest_raw_to_bronze(spark, table, batch_id)
 

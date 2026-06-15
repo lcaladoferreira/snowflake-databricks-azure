@@ -29,7 +29,9 @@ class TestSnowflakeExtractor(unittest.TestCase):
         # Verifications
         mock_cursor.execute.assert_called_once()
         extractor.metadata_mgr.log_extraction.assert_called()
-        self.assertEqual(extractor.metadata_mgr.log_extraction.call_args[1]["status"], "SUCCESS")
+        self.assertEqual(
+            extractor.metadata_mgr.log_extraction.call_args[1]["status"], "SUCCESS"
+        )
 
 
 if __name__ == "__main__":

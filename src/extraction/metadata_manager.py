@@ -47,6 +47,8 @@ class MetadataManager:
 
         # Update watermark on success
         if status == "SUCCESS" and watermark:
-            watermark_path = os.path.join(self.metadata_dir, f"{table_name}_watermark.json")
+            watermark_path = os.path.join(
+                self.metadata_dir, f"{table_name}_watermark.json"
+            )
             with open(watermark_path, "w") as f:
                 json.dump({"table_name": table_name, "watermark": watermark}, f)

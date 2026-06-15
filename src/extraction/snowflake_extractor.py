@@ -47,7 +47,9 @@ class SnowflakeExtractor:
         try:
             # 1. Handle Watermarks for Incremental Extraction
             last_watermark = (
-                self.metadata_mgr.get_last_watermark(table_name) if incremental_col else None
+                self.metadata_mgr.get_last_watermark(table_name)
+                if incremental_col
+                else None
             )
 
             # 2. Construct Safe Query
@@ -71,7 +73,9 @@ class SnowflakeExtractor:
                 if not rows:
                     break
 
-                df = pd.DataFrame(rows, columns=[col[0].lower() for col in cursor.description])
+                df = pd.DataFrame(
+                    rows, columns=[col[0].lower() for col in cursor.description]
+                )
 
                 # Update watermark based on chunk data
                 if incremental_col:
@@ -83,7 +87,9 @@ class SnowflakeExtractor:
                 self._write_to_storage(df, table_name.lower(), chunk_idx)
 
                 total_rows += len(df)
-                logger.info(f"Extracted chunk {chunk_idx} for {table_name} ({len(df)} rows)")
+                logger.info(
+                    f"Extracted chunk {chunk_idx} for {table_name} ({len(df)} rows)"
+                )
                 chunk_idx += 1
 
             # 4. Finalize Metadata Audit
@@ -111,7 +117,9 @@ class SnowflakeExtractor:
             cursor.close()
             conn.close()
 
-    def _write_to_storage(self, df: pd.DataFrame, table_name: str, chunk_idx: int) -> str:
+    def _write_to_storage(
+        self, df: pd.DataFrame, table_name: str, chunk_idx: int
+    ) -> str:
         """Saves dataframe as a partitioned Parquet file in the landing zone."""
         target_dir = Config.get_storage_path("landing", table_name)
         os.makedirs(target_dir, exist_ok=True)

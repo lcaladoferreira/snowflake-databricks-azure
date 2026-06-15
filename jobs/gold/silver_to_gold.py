@@ -24,9 +24,9 @@ def create_gold_marts(spark: SparkSession) -> None:
         "customer_id", "first_name", "last_name", "email", "registration_date"
     ).write.format("delta").mode("overwrite").save(f"{gold_path}/dim_customers")
 
-    products.select("product_id", "product_name", "category", "price").write.format("delta").mode(
-        "overwrite"
-    ).save(f"{gold_path}/dim_products")
+    products.select("product_id", "product_name", "category", "price").write.format(
+        "delta"
+    ).mode("overwrite").save(f"{gold_path}/dim_products")
 
     # 2. Fact Orders
     fact_orders = (
@@ -50,10 +50,15 @@ def create_gold_marts(spark: SparkSession) -> None:
     # Daily Sales
     daily_sales = (
         fact_orders.groupBy(date_format("order_date", "yyyy-MM-dd").alias("sales_date"))
-        .agg(_sum("payment_amount").alias("revenue"), _count("order_id").alias("order_count"))
+        .agg(
+            _sum("payment_amount").alias("revenue"),
+            _count("order_id").alias("order_count"),
+        )
         .orderBy("sales_date")
     )
-    daily_sales.write.format("delta").mode("overwrite").save(f"{gold_path}/mart_sales_daily")
+    daily_sales.write.format("delta").mode("overwrite").save(
+        f"{gold_path}/mart_sales_daily"
+    )
 
     # Customer Lifetime Value
     clv_mart = (
@@ -69,6 +74,8 @@ def create_gold_marts(spark: SparkSession) -> None:
     # Optimization Step (Production only)
     if Config.EXECUTION_MODE != "demo":
         logger.info("Applying Z-Order optimization to Gold Fact table.")
-        spark.sql(f"OPTIMIZE delta.`{gold_path}/fact_orders` ZORDER BY (customer_id, order_date)")
+        spark.sql(
+            f"OPTIMIZE delta.`{gold_path}/fact_orders` ZORDER BY (customer_id, order_date)"
+        )
 
     logger.info("Gold layer Star Schema and Data Marts successfully updated.")

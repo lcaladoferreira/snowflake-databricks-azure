@@ -42,7 +42,8 @@ def generate_sample_data(output_dir="data/sample"):
 
     # Orders
     order_dates = [
-        datetime(2024, 1, 1) + timedelta(days=np.random.randint(0, 90)) for _ in range(num_orders)
+        datetime(2024, 1, 1) + timedelta(days=np.random.randint(0, 90))
+        for _ in range(num_orders)
     ]
     orders = pd.DataFrame(
         {

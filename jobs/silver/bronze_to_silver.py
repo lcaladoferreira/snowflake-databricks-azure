@@ -25,7 +25,9 @@ class SilverTransformer:
 
     def transform_customers(self) -> None:
         logger.info("Silver: Processing Customers")
-        df = self.spark.read.format("delta").load(Config.get_storage_path("bronze", "customers"))
+        df = self.spark.read.format("delta").load(
+            Config.get_storage_path("bronze", "customers")
+        )
 
         cleaned_df = df.select(
             col("customer_id").cast("int"),
@@ -39,7 +41,9 @@ class SilverTransformer:
 
     def transform_products(self) -> None:
         logger.info("Silver: Processing Products")
-        df = self.spark.read.format("delta").load(Config.get_storage_path("bronze", "products"))
+        df = self.spark.read.format("delta").load(
+            Config.get_storage_path("bronze", "products")
+        )
 
         cleaned_df = df.select(
             col("product_id").cast("int"),
@@ -52,7 +56,9 @@ class SilverTransformer:
 
     def transform_orders(self) -> None:
         logger.info("Silver: Processing Orders")
-        df = self.spark.read.format("delta").load(Config.get_storage_path("bronze", "orders"))
+        df = self.spark.read.format("delta").load(
+            Config.get_storage_path("bronze", "orders")
+        )
 
         cleaned_df = df.select(
             col("order_id").cast("int"),
@@ -65,7 +71,9 @@ class SilverTransformer:
 
     def transform_payments(self) -> None:
         logger.info("Silver: Processing Payments")
-        df = self.spark.read.format("delta").load(Config.get_storage_path("bronze", "payments"))
+        df = self.spark.read.format("delta").load(
+            Config.get_storage_path("bronze", "payments")
+        )
 
         cleaned_df = df.select(
             col("payment_id").cast("int"),
@@ -79,7 +87,9 @@ class SilverTransformer:
 
     def transform_order_items(self) -> None:
         logger.info("Silver: Processing Order Items")
-        df = self.spark.read.format("delta").load(Config.get_storage_path("bronze", "order_items"))
+        df = self.spark.read.format("delta").load(
+            Config.get_storage_path("bronze", "order_items")
+        )
 
         cleaned_df = df.select(
             col("order_id").cast("int"),
@@ -94,9 +104,12 @@ class SilverTransformer:
         """Idempotent MERGE logic to prevent duplicates and handle updates."""
         target_path = Config.get_storage_path("silver", table_name)
 
+        # Deduplicate source first (keep latest by ingestion)
         pks = [c.strip() for c in pk_cols.split(",")]
         window = Window.partitionBy(*pks).orderBy(col("_bronze_at").desc())
-        deduped_df = df.withColumn("rn", row_number().over(window)).filter("rn = 1").drop("rn")
+        deduped_df = (
+            df.withColumn("rn", row_number().over(window)).filter("rn = 1").drop("rn")
+        )
 
         if not os.path.exists(target_path):
             deduped_df.write.format("delta").mode("overwrite").save(target_path)

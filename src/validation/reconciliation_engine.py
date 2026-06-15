@@ -40,7 +40,9 @@ class ReconciliationEngine:
         target_df = self.spark.read.format("delta").load(
             Config.get_storage_path("gold", table_name)
         )
-        target_metrics = self._calculate_target_metrics(target_df, numeric_cols, date_col)
+        target_metrics = self._calculate_target_metrics(
+            target_df, numeric_cols, date_col
+        )
 
         # 3. Compare and Generate Report
         report = self._compare_metrics(table_name, source_metrics, target_metrics)
@@ -81,7 +83,9 @@ class ReconciliationEngine:
     def _compare_metrics(self, table_name: str, source: dict, target: dict) -> dict:
         errors = []
         if source["row_count"] != target["row_count"]:
-            errors.append(f"Count mismatch: SF={source['row_count']}, DB={target['row_count']}")
+            errors.append(
+                f"Count mismatch: SF={source['row_count']}, DB={target['row_count']}"
+            )
 
         status = "PASSED" if not errors else "FAILED"
         return {
