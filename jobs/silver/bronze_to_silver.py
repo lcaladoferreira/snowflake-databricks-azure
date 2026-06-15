@@ -94,6 +94,7 @@ class SilverTransformer:
         """Idempotent MERGE logic to prevent duplicates and handle updates."""
         target_path = Config.get_storage_path("silver", table_name)
 
+        # Deduplicate source first (keep latest by ingestion)
         pks = [c.strip() for c in pk_cols.split(",")]
         window = Window.partitionBy(*pks).orderBy(col("_bronze_at").desc())
         deduped_df = df.withColumn("rn", row_number().over(window)).filter("rn = 1").drop("rn")
