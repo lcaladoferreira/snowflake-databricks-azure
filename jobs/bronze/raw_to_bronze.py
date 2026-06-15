@@ -7,8 +7,7 @@ logger = Config.get_logger(__name__)
 
 
 def ingest_raw_to_bronze(spark: SparkSession, table_name: str, batch_id: str) -> None:
-    """
-    Ingests raw Parquet files from Landing to Bronze Delta tables.
+    """Ingests raw Parquet files from Landing to Bronze Delta tables.
     Uses schema enforcement and adds ingestion metadata.
     """
     logger.info(f"Starting Bronze ingestion for {table_name} (Batch: {batch_id})")

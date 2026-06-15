@@ -1,6 +1,8 @@
 import os
-import pandas as pd
 from datetime import datetime
+
+import pandas as pd
+
 from src.config.config import Config
 from src.extraction.metadata_manager import MetadataManager
 

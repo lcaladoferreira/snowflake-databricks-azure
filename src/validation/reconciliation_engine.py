@@ -6,10 +6,16 @@ from pyspark.sql.functions import (
     col,
     count,
     current_timestamp,
-    max as _max,
-    min as _min,
-    sum as _sum,
     when,
+)
+from pyspark.sql.functions import (
+    max as _max,
+)
+from pyspark.sql.functions import (
+    min as _min,
+)
+from pyspark.sql.functions import (
+    sum as _sum,
 )
 
 from src.config.config import Config
@@ -18,9 +24,18 @@ logger = Config.get_logger(__name__)
 
 
 class ReconciliationEngine:
-    """Enterprise-grade Reconciliation Engine for Source-to-Target Parity."""
+    """Enterprise-grade Reconciliation Engine for Source-to-Target Parity.
 
-    def __init__(self, spark: SparkSession):
+    This engine compares metrics between the source (Snowflake) and target (Databricks)
+    to ensure data integrity throughout the migration process.
+    """
+
+    def __init__(self, spark: SparkSession) -> None:
+        """Initializes the engine with a Spark session.
+
+        Args:
+            spark: Active Spark session.
+        """
         self.spark = spark
         self.results_path = Config.get_storage_path("gold", "reconciliation_results")
 
@@ -30,13 +45,17 @@ class ReconciliationEngine:
         numeric_cols: List[str],
         date_col: Optional[str] = None,
     ) -> None:
-        """Runs comprehensive parity checks between Snowflake and Databricks."""
+        """Runs comprehensive parity checks between Snowflake and Databricks.
+
+        Args:
+            table_name: Name of the table to reconcile.
+            numeric_cols: List of numeric columns for checksum validation.
+            date_col: Optional date column for range validation.
+        """
         logger.info(f"Reconciling table: {table_name}")
 
-        # 1. Fetch Source Metrics (Simulated from Metadata in Template)
         source_metrics = self._get_source_metrics(table_name, numeric_cols, date_col)
 
-        # 2. Calculate Target Metrics
         target_df = self.spark.read.format("delta").load(
             Config.get_storage_path("gold", table_name)
         )
@@ -44,11 +63,9 @@ class ReconciliationEngine:
             target_df, numeric_cols, date_col
         )
 
-        # 3. Compare and Generate Report
         report = self._compare_metrics(table_name, source_metrics, target_metrics)
         self._persist_report(report)
 
-        # 4. Enforce Gate
         if report["status"] == "FAILED":
             logger.error(f"Reconciliation FAILURE for {table_name}")
         else:
@@ -57,7 +74,16 @@ class ReconciliationEngine:
     def _calculate_target_metrics(
         self, df: DataFrame, num_cols: List[str], date_col: Optional[str]
     ) -> Dict[str, Any]:
-        """Calculates aggregates, nulls, and row counts."""
+        """Calculates aggregates, nulls, and row counts.
+
+        Args:
+            df: Target dataframe.
+            num_cols: Numeric columns for checksum.
+            date_col: Optional date column.
+
+        Returns:
+            Dict[str, Any]: Calculated metrics.
+        """
         aggs = [count("*").alias("row_count")]
 
         for c in num_cols:
@@ -73,7 +99,18 @@ class ReconciliationEngine:
     def _get_source_metrics(
         self, table_name: str, num_cols: List[str], date_col: Optional[str]
     ) -> Dict[str, Any]:
-        """Fetches metrics from Snowflake (Simulated)."""
+        """Fetches metrics from Snowflake (Simulated).
+
+        In production, this would perform a direct query to Snowflake.
+
+        Args:
+            table_name: Name of the source table.
+            num_cols: Numeric columns.
+            date_col: Optional date column.
+
+        Returns:
+            Dict[str, Any]: Source metrics.
+        """
         metrics = {"row_count": 500}
         for c in num_cols:
             metrics[f"sum_{c}"] = 125000.0
@@ -81,6 +118,16 @@ class ReconciliationEngine:
         return metrics
 
     def _compare_metrics(self, table_name: str, source: dict, target: dict) -> dict:
+        """Compares source and target metrics and identifies discrepancies.
+
+        Args:
+            table_name: Table name.
+            source: Source metrics dictionary.
+            target: Target metrics dictionary.
+
+        Returns:
+            dict: Reconciliation report.
+        """
         errors = []
         if source["row_count"] != target["row_count"]:
             errors.append(
@@ -98,7 +145,11 @@ class ReconciliationEngine:
         }
 
     def _persist_report(self, report: dict) -> None:
-        """Stores the result in a Delta audit table."""
+        """Stores the result in a Delta audit table.
+
+        Args:
+            report: Reconciliation report dictionary.
+        """
         df = self.spark.createDataFrame([report])
         (
             df.withColumn("audit_timestamp", current_timestamp())

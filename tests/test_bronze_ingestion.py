@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import patch
+
 from jobs.bronze.raw_to_bronze import ingest_raw_to_bronze
 from tests.pyspark_test_base import PySparkTestCase
 

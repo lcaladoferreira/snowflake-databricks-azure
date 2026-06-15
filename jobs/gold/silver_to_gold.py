@@ -1,5 +1,7 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, count as _count, date_format, sum as _sum
+from pyspark.sql.functions import col, date_format
+from pyspark.sql.functions import count as _count
+from pyspark.sql.functions import sum as _sum
 
 from src.config.config import Config
 
@@ -8,7 +10,6 @@ logger = Config.get_logger(__name__)
 
 def create_gold_marts(spark: SparkSession) -> None:
     """Creates a high-performance Star Schema and Analytical Data Marts."""
-
     silver_path = Config.get_storage_path("silver")
     gold_path = Config.get_storage_path("gold")
 

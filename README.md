@@ -21,6 +21,8 @@ Enterprise organizations migrating from Snowflake to Databricks often face signi
 
 The framework follows a multi-hop **Medallion Architecture** governed by **Unity Catalog**.
 
+![Architecture Diagram](docs/architecture.png)
+
 ```mermaid
 graph LR
     subgraph Snowflake_Source
@@ -72,8 +74,8 @@ graph LR
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/your-repo/snowflake-databricks-migration.git
-   cd snowflake-databricks-migration
+   git clone https://github.com/lcaladoferreira/snowflake-databricks-azure.git
+   cd snowflake-databricks-azure
    ```
 
 2. **Configure Environment Variables**:

@@ -1,4 +1,5 @@
 import unittest
+
 from src.config.config import Config
 
 

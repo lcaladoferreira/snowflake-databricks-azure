@@ -1,3 +1,9 @@
+"""Main orchestration module for the Snowflake to Databricks migration pipeline.
+
+This module coordinates the extraction, ingestion, transformation, and validation
+phases of the migration process.
+"""
+
 import sys
 from typing import Any
 
@@ -15,9 +21,17 @@ logger = Config.get_logger(__name__)
 
 
 def run_pipeline() -> None:
-    """
-    Main orchestration function for the Snowflake-to-Databricks migration.
-    Supports both DEMO (local) and PRODUCTION (Azure/Snowflake) modes.
+    """Main orchestration function for the Snowflake-to-Databricks migration.
+
+    Coordinates the following phases:
+    1. Extraction (Snowflake or Demo)
+    2. Bronze Ingestion (Raw to Delta)
+    3. Silver Transformation (Clean, Dedupe, Merge)
+    4. Gold Processing (Star Schema, Marts)
+    5. Validation (Reconciliation Parity Checks)
+
+    Raises:
+        Exception: If any phase of the pipeline fails.
     """
     logger.info(
         f"Initiating Migration Pipeline (Mode: {Config.EXECUTION_MODE}, Env: {Config.ENV})"

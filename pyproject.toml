@@ -1,3 +1,51 @@
-[project]
-name = "snowflake-migration"
-version = "0.1.0"
+[tool.poetry]
+name = "snowflake-databricks-azure"
+version = "1.0.0"
+description = "Migration accelerator from Snowflake to Azure Databricks Lakehouse"
+authors = ["Leandro Calado Ferreira"]
+readme = "README.md"
+packages = [{include = "src"}, {include = "jobs"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pyspark = "3.5.0"
+delta-spark = "3.1.0"
+pandas = "2.2.0"
+python-dotenv = "1.0.1"
+snowflake-connector-python = ">=3.7.0"
+snowflake-sqlalchemy = "1.5.1"
+cryptography = ">=42.0.0"
+azure-storage-blob = ">=12.19.0"
+azure-identity = ">=1.25.0"
+pyarrow = "15.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "8.0.0"
+pytest-cov = "4.1.0"
+black = "24.2.0"
+ruff = "0.3.0"
+mypy = "1.8.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+addopts = "--cov=src --cov=jobs --cov-report=term-missing"
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "D"]
+ignore = ["D100", "D104"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.black]
+line-length = 88
+target-version = ['py310']

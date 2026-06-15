@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch
+
 from jobs.silver.bronze_to_silver import SilverTransformer
 from tests.pyspark_test_base import PySparkTestCase
 

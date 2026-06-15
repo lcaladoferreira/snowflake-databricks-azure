@@ -1,6 +1,7 @@
 import unittest
-from src.utils.spark_utils import get_spark_session
+
 from src.config.config import Config
+from src.utils.spark_utils import get_spark_session
 
 
 class PySparkTestCase(unittest.TestCase):

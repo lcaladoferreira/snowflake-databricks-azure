@@ -12,18 +12,29 @@ logger = Config.get_logger(__name__)
 
 
 class SnowflakeExtractor:
-    """Enterprise-grade Snowflake extractor with chunking, watermarking, and safety controls."""
+    """Enterprise-grade Snowflake extractor with chunking, watermarking, and safety controls.
 
-    # Allowlist of tables to prevent SQL injection in dynamic queries
+    This class handles the extraction of data from Snowflake tables into Parquet files,
+    supporting both full and incremental loads.
+    """
+
     ALLOWED_TABLES = {"CUSTOMERS", "PRODUCTS", "ORDERS", "ORDER_ITEMS", "PAYMENTS"}
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """Initializes the extractor with Snowflake configuration and metadata manager."""
         self.config = Config.get_snowflake_config()
         self.metadata_mgr = MetadataManager()
         self.batch_id = datetime.now().strftime("%Y%m%d%H%M%S")
 
     def _get_connection(self) -> snowflake.connector.SnowflakeConnection:
-        """Establishes a secure connection to Snowflake."""
+        """Establishes a secure connection to Snowflake.
+
+        Returns:
+            snowflake.connector.SnowflakeConnection: Active Snowflake connection.
+
+        Raises:
+            snowflake.connector.Error: If the connection fails.
+        """
         try:
             return snowflake.connector.connect(**self.config)
         except snowflake.connector.Error as e:
@@ -36,8 +47,16 @@ class SnowflakeExtractor:
         incremental_col: Optional[str] = None,
         chunk_size: int = 100000,
     ) -> None:
-        """Extracts table data with chunking and watermark management."""
+        """Extracts table data with chunking and watermark management.
 
+        Args:
+            table_name: Name of the table to extract.
+            incremental_col: Column to use for incremental watermark logic.
+            chunk_size: Number of rows per chunk.
+
+        Raises:
+            ValueError: If the table name is not in the allowed list.
+        """
         if table_name.upper() not in self.ALLOWED_TABLES:
             raise ValueError(f"Table {table_name} is not in the allowed list.")
 
@@ -45,17 +64,14 @@ class SnowflakeExtractor:
         cursor = conn.cursor()
 
         try:
-            # 1. Handle Watermarks for Incremental Extraction
             last_watermark = (
                 self.metadata_mgr.get_last_watermark(table_name)
                 if incremental_col
                 else None
             )
 
-            # 2. Construct Safe Query
             query = f"SELECT * FROM {table_name.upper()}"
             if last_watermark and incremental_col:
-                # Use parameterized query for watermark safety
                 query += f" WHERE {incremental_col} > %s"
                 logger.info(f"Incremental load for {table_name} since {last_watermark}")
                 cursor.execute(query, (last_watermark,))
@@ -63,7 +79,6 @@ class SnowflakeExtractor:
                 logger.info(f"Full load for {table_name}")
                 cursor.execute(query)
 
-            # 3. Chunked Streaming to Storage
             chunk_idx = 0
             total_rows = 0
             new_max_watermark = last_watermark
@@ -77,13 +92,11 @@ class SnowflakeExtractor:
                     rows, columns=[col[0].lower() for col in cursor.description]
                 )
 
-                # Update watermark based on chunk data
                 if incremental_col:
                     current_max = df[incremental_col.lower()].max()
                     if new_max_watermark is None or current_max > new_max_watermark:
                         new_max_watermark = current_max
 
-                # Write chunk to Parquet
                 self._write_to_storage(df, table_name.lower(), chunk_idx)
 
                 total_rows += len(df)
@@ -92,7 +105,6 @@ class SnowflakeExtractor:
                 )
                 chunk_idx += 1
 
-            # 4. Finalize Metadata Audit
             self.metadata_mgr.log_extraction(
                 batch_id=self.batch_id,
                 table_name=table_name,
@@ -120,7 +132,16 @@ class SnowflakeExtractor:
     def _write_to_storage(
         self, df: pd.DataFrame, table_name: str, chunk_idx: int
     ) -> str:
-        """Saves dataframe as a partitioned Parquet file in the landing zone."""
+        """Saves dataframe as a partitioned Parquet file in the landing zone.
+
+        Args:
+            df: Dataframe to save.
+            table_name: Target table name.
+            chunk_idx: Index of the current chunk.
+
+        Returns:
+            str: Path to the saved file.
+        """
         target_dir = Config.get_storage_path("landing", table_name)
         os.makedirs(target_dir, exist_ok=True)
 
