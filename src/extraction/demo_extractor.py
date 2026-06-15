@@ -1,11 +1,11 @@
 import os
-import shutil
 import pandas as pd
 from datetime import datetime
 from src.config.config import Config
 from src.extraction.metadata_manager import MetadataManager
 
 logger = Config.get_logger(__name__)
+
 
 class DemoExtractor:
     """Simulates Snowflake extraction using local CSV files."""
@@ -34,12 +34,10 @@ class DemoExtractor:
             df.to_parquet(output_path, index=False)
 
             self.metadata_mgr.log_extraction(
-                batch_id=self.batch_id,
-                table_name=table,
-                row_count=len(df),
-                status="SUCCESS"
+                batch_id=self.batch_id, table_name=table, row_count=len(df), status="SUCCESS"
             )
             logger.info(f"DEMO: Extracted {table} ({len(df)} rows) to {output_path}")
+
 
 if __name__ == "__main__":
     DemoExtractor().extract_all()

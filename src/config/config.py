@@ -7,9 +7,9 @@ load_dotenv()
 
 # Structured Logging Setup
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
+
 
 class Config:
     """Central configuration management for the migration accelerator."""
@@ -34,7 +34,9 @@ class Config:
     # Azure Storage (ADLS Gen2)
     ADLS_ACCOUNT_NAME: Optional[str] = os.getenv("ADLS_ACCOUNT_NAME")
     ADLS_CONTAINER: str = os.getenv("ADLS_CONTAINER", "lakehouse")
-    ADLS_BASE_PATH: str = os.getenv("ADLS_BASE_PATH", f"abfss://{ADLS_CONTAINER}@{ADLS_ACCOUNT_NAME}.dfs.core.windows.net")
+    ADLS_BASE_PATH: str = os.getenv(
+        "ADLS_BASE_PATH", f"abfss://{ADLS_CONTAINER}@{ADLS_ACCOUNT_NAME}.dfs.core.windows.net"
+    )
 
     # Local Paths (Demo Mode)
     LOCAL_DATA_DIR: str = "data"
@@ -70,5 +72,5 @@ class Config:
             "warehouse": cls.SNOWFLAKE_WAREHOUSE,
             "database": cls.SNOWFLAKE_DATABASE,
             "schema": cls.SNOWFLAKE_SCHEMA,
-            "role": cls.SNOWFLAKE_ROLE
+            "role": cls.SNOWFLAKE_ROLE,
         }

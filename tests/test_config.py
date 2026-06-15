@@ -1,6 +1,7 @@
 import unittest
 from src.config.config import Config
 
+
 class TestConfig(unittest.TestCase):
     def test_get_storage_path_demo(self):
         Config.EXECUTION_MODE = "demo"
@@ -13,5 +14,6 @@ class TestConfig(unittest.TestCase):
         path = Config.get_storage_path("bronze", "customers")
         self.assertEqual(path, "abfss://lake@acc.dfs.core.windows.net/bronze/customers")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,5 @@
+{"batch_id": "20260615182243", "table_name": "customers", "row_count": 100, "timestamp": "2026-06-15T18:22:43.796651", "status": "SUCCESS", "error": null}
+{"batch_id": "20260615182243", "table_name": "products", "row_count": 20, "timestamp": "2026-06-15T18:22:43.801323", "status": "SUCCESS", "error": null}
+{"batch_id": "20260615182243", "table_name": "orders", "row_count": 500, "timestamp": "2026-06-15T18:22:43.806531", "status": "SUCCESS", "error": null}
+{"batch_id": "20260615182243", "table_name": "order_items", "row_count": 1274, "timestamp": "2026-06-15T18:22:43.810501", "status": "SUCCESS", "error": null}
+{"batch_id": "20260615182243", "table_name": "payments", "row_count": 500, "timestamp": "2026-06-15T18:22:43.815170", "status": "SUCCESS", "error": null}

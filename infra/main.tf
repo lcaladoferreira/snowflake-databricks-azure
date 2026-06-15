@@ -1,4 +1,6 @@
+# main.tf
 terraform {
+  required_version = ">= 1.5.0"
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
@@ -17,6 +19,7 @@ provider "azurerm" {
 resource "azurerm_resource_group" "this" {
   name     = "rg-migration-${var.environment}"
   location = var.location
+  tags     = var.tags
 }
 
 module "storage" {
@@ -24,6 +27,7 @@ module "storage" {
   resource_group_name = azurerm_resource_group.this.name
   location            = azurerm_resource_group.this.location
   environment         = var.environment
+  tags                = var.tags
 }
 
 module "keyvault" {
@@ -31,6 +35,7 @@ module "keyvault" {
   resource_group_name = azurerm_resource_group.this.name
   location            = azurerm_resource_group.this.location
   environment         = var.environment
+  tags                = var.tags
 }
 
 module "databricks" {
@@ -39,4 +44,5 @@ module "databricks" {
   location            = azurerm_resource_group.this.location
   environment         = var.environment
   storage_account_id  = module.storage.storage_account_id
+  tags                = var.tags
 }

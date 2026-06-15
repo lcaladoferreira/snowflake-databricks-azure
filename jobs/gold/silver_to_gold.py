@@ -1,50 +1,67 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, sum as _sum, count as _count, avg as _avg, date_format
+from pyspark.sql.functions import col, sum as _sum, count as _count, date_format
 from src.config.config import Config
 
 logger = Config.get_logger(__name__)
 
-def create_gold_marts(spark: SparkSession):
-    """Generates analytical Star Schema and Data Marts in Gold."""
 
-    logger.info("Generating Gold layer analytical tables...")
+def create_gold_marts(spark: SparkSession) -> None:
+    """Creates a high-performance Star Schema and Analytical Data Marts."""
 
-    silver_base = Config.get_storage_path("silver")
-    gold_base = Config.get_storage_path("gold")
+    silver_path = Config.get_storage_path("silver")
+    gold_path = Config.get_storage_path("gold")
 
-    # Load Silver
-    orders = spark.read.format("delta").load(f"{silver_base}/orders")
-    items = spark.read.format("delta").load(f"{silver_base}/order_items")
-    payments = spark.read.format("delta").load(f"{silver_base}/payments")
-    customers = spark.read.format("delta").load(f"{silver_base}/customers")
+    # Load Source Tables
+    customers = spark.read.format("delta").load(f"{silver_path}/customers")
+    products = spark.read.format("delta").load(f"{silver_path}/products")
+    orders = spark.read.format("delta").load(f"{silver_path}/orders")
+    payments = spark.read.format("delta").load(f"{silver_path}/payments")
+    items = spark.read.format("delta").load(f"{silver_path}/order_items")
 
-    # 1. Fact Orders (Denormalized for performance)
-    fact_orders = (orders.alias("o")
-                   .join(items.alias("i"), "order_id")
-                   .join(payments.alias("p"), "order_id")
-                   .select("o.*", "i.product_id", "i.quantity", "p.payment_amount", "p.payment_method"))
+    # 1. Dimensions (SCD Type 1 for simplicity)
+    customers.select(
+        "customer_id", "first_name", "last_name", "email", "registration_date"
+    ).write.format("delta").mode("overwrite").save(f"{gold_path}/dim_customers")
 
-    (fact_orders.write.format("delta")
-     .mode("overwrite")
-     .option("overwriteSchema", "true")
-     .save(f"{gold_base}/fact_orders"))
+    products.select("product_id", "product_name", "category", "price").write.format("delta").mode(
+        "overwrite"
+    ).save(f"{gold_path}/dim_products")
 
-    # 2. Mart: Daily Sales
-    daily_sales = (fact_orders.groupBy(date_format("order_date", "yyyy-MM-dd").alias("order_day"))
-                   .agg(_sum("payment_amount").alias("daily_revenue"),
-                        _count("order_id").alias("order_count"))
-                   .orderBy("order_day"))
+    # 2. Fact Orders
+    fact_orders = (
+        orders.alias("o")
+        .join(items.alias("i"), "order_id")
+        .join(payments.alias("p"), "order_id")
+        .select(
+            col("o.order_id"),
+            col("o.customer_id"),
+            col("i.product_id"),
+            col("o.order_date"),
+            col("o.status"),
+            col("i.quantity"),
+            col("p.payment_amount"),
+            col("p.payment_method"),
+        )
+    )
+    fact_orders.write.format("delta").mode("overwrite").save(f"{gold_path}/fact_orders")
 
-    (daily_sales.write.format("delta")
-     .mode("overwrite")
-     .save(f"{gold_base}/mart_daily_sales"))
+    # 3. Analytical Marts
 
-    # Optimization (Z-Order) - Placeholder for production performance
-    # spark.sql(f"OPTIMIZE delta.`{gold_base}/fact_orders` ZORDER BY (customer_id)")
+    # Mart: Daily Sales
+    daily_sales = fact_orders.groupBy(
+        date_format("order_date", "yyyy-MM-dd").alias("sales_date")
+    ).agg(_sum("payment_amount").alias("revenue"), _count("order_id").alias("order_count"))
+    daily_sales.write.format("delta").mode("overwrite").save(f"{gold_path}/mart_sales_daily")
 
-    logger.info("Gold marts created successfully.")
+    # Mart: Customer Lifetime Value (CLV)
+    clv_mart = fact_orders.groupBy("customer_id").agg(
+        _sum("payment_amount").alias("lifetime_value"), _count("order_id").alias("total_orders")
+    )
+    clv_mart.write.format("delta").mode("overwrite").save(f"{gold_path}/mart_clv")
 
-if __name__ == "__main__":
-    from src.utils.spark_utils import get_spark_session
-    s = get_spark_session("GoldProcessing")
-    create_gold_marts(s)
+    # Optimization Step (Production only)
+    if Config.EXECUTION_MODE != "demo":
+        logger.info("Applying Z-Order optimization to Gold Fact table.")
+        spark.sql(f"OPTIMIZE delta.`{gold_path}/fact_orders` ZORDER BY (customer_id, order_date)")
+
+    logger.info("Gold layer Star Schema and Data Marts successfully updated.")

@@ -1,44 +1,70 @@
-from src.extraction.extractor import Extractor
-from jobs.bronze.ingest_raw_to_bronze import ingest_to_bronze
-from jobs.silver.transform_bronze_to_silver import transform_to_silver
-from jobs.gold.transform_silver_to_gold import transform_to_gold
-from src.validation.reconciler import Reconciler
-from src.utils.logger import get_logger
 import sys
+from src.config.config import Config
+from src.extraction.demo_extractor import DemoExtractor
+from src.extraction.snowflake_extractor import SnowflakeExtractor
+from jobs.bronze.raw_to_bronze import ingest_raw_to_bronze
+from jobs.silver.bronze_to_silver import SilverTransformer
+from jobs.gold.silver_to_gold import create_gold_marts
+from src.validation.reconciliation_engine import ReconciliationEngine
+from src.utils.spark_utils import get_spark_session
 
-logger = get_logger(__name__)
+# Initialize Logger
+logger = Config.get_logger(__name__)
 
-def main():
-    logger.info("Starting Snowflake to Databricks Migration Pipeline...")
+
+def run_pipeline() -> None:
+    """
+    Main orchestration function for the Snowflake-to-Databricks migration.
+    Supports both DEMO (local) and PRODUCTION (Azure/Snowflake) modes.
+    """
+    logger.info(f"Initiating Migration Pipeline (Mode: {Config.EXECUTION_MODE}, Env: {Config.ENV})")
 
     try:
-        # 1. Extraction
+        # 1. Extraction Phase
         logger.info("--- Phase 1: Extraction ---")
-        extractor = Extractor()
-        extractor.extract_all()
+        if Config.EXECUTION_MODE == "demo":
+            extractor = DemoExtractor()
+            extractor.extract_all()
+        else:
+            extractor = SnowflakeExtractor()
+            tables = ["CUSTOMERS", "PRODUCTS", "ORDERS", "ORDER_ITEMS", "PAYMENTS"]
+            for table in tables:
+                # Example: Incremental for large tables, full for small
+                incremental_col = "UPDATED_AT" if table in ["ORDERS", "PAYMENTS"] else None
+                extractor.extract_table(table, incremental_col=incremental_col)
 
-        # 2. Bronze Layer
-        logger.info("--- Phase 2: Bronze Layer ---")
-        ingest_to_bronze()
+        # Initialize Spark for Medallion Processing
+        spark = get_spark_session(f"MigrationPipeline_{Config.EXECUTION_MODE}")
+        batch_id = extractor.batch_id if hasattr(extractor, "batch_id") else "manual_run"
 
-        # 3. Silver Layer
-        logger.info("--- Phase 3: Silver Layer ---")
-        transform_to_silver()
+        # 2. Bronze Phase
+        logger.info("--- Phase 2: Bronze Ingestion ---")
+        tables_to_ingest = ["customers", "products", "orders", "order_items", "payments"]
+        for table in tables_to_ingest:
+            ingest_raw_to_bronze(spark, table, batch_id)
 
-        # 4. Gold Layer
-        logger.info("--- Phase 4: Gold Layer ---")
-        transform_to_gold()
+        # 3. Silver Phase
+        logger.info("--- Phase 3: Silver Transformation ---")
+        transformer = SilverTransformer(spark)
+        transformer.transform_all()
 
-        # 5. Validation
-        logger.info("--- Phase 5: Validation & Reconciliation ---")
-        reconciler = Reconciler()
-        reconciler.run_reconciliation()
+        # 4. Gold Phase
+        logger.info("--- Phase 4: Gold Processing ---")
+        create_gold_marts(spark)
 
-        logger.info("Migration Pipeline completed successfully!")
+        # 5. Validation Phase
+        logger.info("--- Phase 5: Reconciliation & Quality ---")
+        reconciler = ReconciliationEngine(spark)
+        # Reconcile critical tables
+        reconciler.reconcile("fact_orders", ["payment_amount"])
+        reconciler.reconcile("dim_customers", [])
+
+        logger.info("Migration Pipeline completed successfully.")
 
     except Exception as e:
-        logger.error(f"Pipeline failed: {str(e)}")
+        logger.error(f"Pipeline failed with error: {str(e)}", exc_info=True)
         sys.exit(1)
 
+
 if __name__ == "__main__":
-    main()
+    run_pipeline()
