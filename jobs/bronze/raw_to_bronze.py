@@ -1,11 +1,12 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import current_timestamp, lit, input_file_name
+from pyspark.sql.functions import current_timestamp, input_file_name, lit
+
 from src.config.config import Config
 
 logger = Config.get_logger(__name__)
 
 
-def ingest_raw_to_bronze(spark: SparkSession, table_name: str, batch_id: str):
+def ingest_raw_to_bronze(spark: SparkSession, table_name: str, batch_id: str) -> None:
     """
     Ingests raw Parquet files from Landing to Bronze Delta tables.
     Uses schema enforcement and adds ingestion metadata.
@@ -20,12 +21,12 @@ def ingest_raw_to_bronze(spark: SparkSession, table_name: str, batch_id: str):
         else None
     )
 
-    # Read from landing (using Auto Loader in Production/Databricks, standard Parquet for demo/local)
+    # Read from landing
     if (
         Config.EXECUTION_MODE != "demo"
         and spark.conf.get("spark.databricks.service.client.enabled", "false") == "true"
     ):
-        # Auto Loader (CloudFiles)
+        # Auto Loader (Production)
         raw_df = (
             spark.readStream.format("cloudFiles")
             .option("cloudFiles.format", "parquet")
@@ -33,19 +34,18 @@ def ingest_raw_to_bronze(spark: SparkSession, table_name: str, batch_id: str):
             .load(landing_path)
         )
     else:
-        # Standard Batch Read
+        # Standard Batch Read (Demo)
         raw_df = spark.read.format("parquet").load(landing_path)
 
-    # Add Metadata
+    # Add Ingestion Metadata
     bronze_df = (
         raw_df.withColumn("_ingestion_timestamp", current_timestamp())
         .withColumn("_batch_id", lit(batch_id))
         .withColumn("_source_file", input_file_name())
     )
 
-    # Write to Delta (Bronze)
+    # Write to Delta
     if Config.EXECUTION_MODE != "demo" and checkpoint_path:
-        # Stream write
         (
             bronze_df.writeStream.format("delta")
             .option("checkpointLocation", checkpoint_path)
@@ -53,15 +53,15 @@ def ingest_raw_to_bronze(spark: SparkSession, table_name: str, batch_id: str):
             .table(f"{Config.UC_CATALOG}.{Config.UC_BRONZE_SCHEMA}.{table_name}")
         )
     else:
-        # Batch write
         (bronze_df.write.format("delta").mode("append").save(bronze_path))
 
     logger.info(f"Successfully ingested {table_name} to Bronze.")
 
 
 if __name__ == "__main__":
-    from src.utils.spark_utils import get_spark_session
     import sys
+
+    from src.utils.spark_utils import get_spark_session
 
     table = sys.argv[1] if len(sys.argv) > 1 else "customers"
     batch = sys.argv[2] if len(sys.argv) > 2 else "manual"

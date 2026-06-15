@@ -1,7 +1,7 @@
 import os
 
 from pyspark.sql import DataFrame, SparkSession
-from pyspark.sql.functions import col, row_number, to_timestamp, upper, trim
+from pyspark.sql.functions import col, row_number, to_timestamp, trim, upper
 from pyspark.sql.window import Window
 
 from src.config.config import Config
@@ -87,14 +87,13 @@ class SilverTransformer:
             col("quantity").cast("int"),
             col("_ingestion_timestamp").alias("_bronze_at"),
         )
-        # Order items usually don't have a single PK, but we deduplicate based on composite
+        # Composite PK deduplication
         self._upsert(cleaned_df, "order_items", "order_id, product_id")
 
     def _upsert(self, df: DataFrame, table_name: str, pk_cols: str) -> None:
         """Idempotent MERGE logic to prevent duplicates and handle updates."""
         target_path = Config.get_storage_path("silver", table_name)
 
-        # Deduplicate source first (keep latest by ingestion)
         pks = [c.strip() for c in pk_cols.split(",")]
         window = Window.partitionBy(*pks).orderBy(col("_bronze_at").desc())
         deduped_df = df.withColumn("rn", row_number().over(window)).filter("rn = 1").drop("rn")
@@ -102,13 +101,10 @@ class SilverTransformer:
         if not os.path.exists(target_path):
             deduped_df.write.format("delta").mode("overwrite").save(target_path)
         else:
-            # Use DeltaTable API for better local/demo compatibility
             from delta.tables import DeltaTable
 
             target_table = DeltaTable.forPath(self.spark, target_path)
-
             merge_condition = " AND ".join([f"target.{c} = source.{c}" for c in pks])
-
             (
                 target_table.alias("target")
                 .merge(deduped_df.alias("source"), merge_condition)
@@ -116,5 +112,4 @@ class SilverTransformer:
                 .whenNotMatchedInsertAll()
                 .execute()
             )
-
         logger.info(f"Silver: {table_name} upserted.")

@@ -1,14 +1,14 @@
 import sys
 from typing import Any
 
+from jobs.bronze.raw_to_bronze import ingest_raw_to_bronze
+from jobs.gold.silver_to_gold import create_gold_marts
+from jobs.silver.bronze_to_silver import SilverTransformer
 from src.config.config import Config
 from src.extraction.demo_extractor import DemoExtractor
 from src.extraction.snowflake_extractor import SnowflakeExtractor
-from jobs.bronze.raw_to_bronze import ingest_raw_to_bronze
-from jobs.silver.bronze_to_silver import SilverTransformer
-from jobs.gold.silver_to_gold import create_gold_marts
-from src.validation.reconciliation_engine import ReconciliationEngine
 from src.utils.spark_utils import get_spark_session
+from src.validation.reconciliation_engine import ReconciliationEngine
 
 # Initialize Logger
 logger = Config.get_logger(__name__)
@@ -24,8 +24,9 @@ def run_pipeline() -> None:
     try:
         # 1. Extraction Phase
         logger.info("--- Phase 1: Extraction ---")
+        extractor: Any
         if Config.EXECUTION_MODE == "demo":
-            extractor: Any = DemoExtractor()
+            extractor = DemoExtractor()
             extractor.extract_all()
         else:
             extractor = SnowflakeExtractor()

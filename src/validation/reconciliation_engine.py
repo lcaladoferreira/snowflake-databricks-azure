@@ -6,8 +6,8 @@ from pyspark.sql.functions import (
     col,
     count,
     current_timestamp,
-    min as _min,
     max as _max,
+    min as _min,
     sum as _sum,
     when,
 )

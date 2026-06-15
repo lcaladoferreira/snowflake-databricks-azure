@@ -1,5 +1,6 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, sum as _sum, count as _count, date_format
+from pyspark.sql.functions import col, count as _count, date_format, sum as _sum
+
 from src.config.config import Config
 
 logger = Config.get_logger(__name__)
@@ -18,7 +19,7 @@ def create_gold_marts(spark: SparkSession) -> None:
     payments = spark.read.format("delta").load(f"{silver_path}/payments")
     items = spark.read.format("delta").load(f"{silver_path}/order_items")
 
-    # 1. Dimensions (SCD Type 1 for simplicity)
+    # 1. Dimensions
     customers.select(
         "customer_id", "first_name", "last_name", "email", "registration_date"
     ).write.format("delta").mode("overwrite").save(f"{gold_path}/dim_customers")
@@ -46,16 +47,22 @@ def create_gold_marts(spark: SparkSession) -> None:
     fact_orders.write.format("delta").mode("overwrite").save(f"{gold_path}/fact_orders")
 
     # 3. Analytical Marts
-
-    # Mart: Daily Sales
-    daily_sales = fact_orders.groupBy(
-        date_format("order_date", "yyyy-MM-dd").alias("sales_date")
-    ).agg(_sum("payment_amount").alias("revenue"), _count("order_id").alias("order_count"))
+    # Daily Sales
+    daily_sales = (
+        fact_orders.groupBy(date_format("order_date", "yyyy-MM-dd").alias("sales_date"))
+        .agg(_sum("payment_amount").alias("revenue"), _count("order_id").alias("order_count"))
+        .orderBy("sales_date")
+    )
     daily_sales.write.format("delta").mode("overwrite").save(f"{gold_path}/mart_sales_daily")
 
-    # Mart: Customer Lifetime Value (CLV)
-    clv_mart = fact_orders.groupBy("customer_id").agg(
-        _sum("payment_amount").alias("lifetime_value"), _count("order_id").alias("total_orders")
+    # Customer Lifetime Value
+    clv_mart = (
+        fact_orders.groupBy("customer_id")
+        .agg(
+            _sum("payment_amount").alias("lifetime_value"),
+            _count("order_id").alias("total_orders"),
+        )
+        .orderBy(col("lifetime_value").desc())
     )
     clv_mart.write.format("delta").mode("overwrite").save(f"{gold_path}/mart_clv")
 

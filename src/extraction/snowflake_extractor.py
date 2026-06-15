@@ -1,8 +1,10 @@
-import snowflake.connector
-import pandas as pd
 import os
-from typing import Optional
 from datetime import datetime
+from typing import Optional
+
+import pandas as pd
+import snowflake.connector
+
 from src.config.config import Config
 from src.extraction.metadata_manager import MetadataManager
 
@@ -29,7 +31,10 @@ class SnowflakeExtractor:
             raise
 
     def extract_table(
-        self, table_name: str, incremental_col: Optional[str] = None, chunk_size: int = 100000
+        self,
+        table_name: str,
+        incremental_col: Optional[str] = None,
+        chunk_size: int = 100000,
     ) -> None:
         """Extracts table data with chunking and watermark management."""
 
@@ -48,7 +53,7 @@ class SnowflakeExtractor:
             # 2. Construct Safe Query
             query = f"SELECT * FROM {table_name.upper()}"
             if last_watermark and incremental_col:
-                # Use parameterized query or safe formatting for watermark
+                # Use parameterized query for watermark safety
                 query += f" WHERE {incremental_col} > %s"
                 logger.info(f"Incremental load for {table_name} since {last_watermark}")
                 cursor.execute(query, (last_watermark,))
