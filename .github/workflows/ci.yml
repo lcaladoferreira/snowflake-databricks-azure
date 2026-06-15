@@ -2,29 +2,35 @@ name: Enterprise CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 jobs:
   python-validation:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: "3.10"
+
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
           pip install black flake8 ruff
+
       - name: Syntax Check (compileall)
         run: python -m compileall src jobs scripts tests
+
       - name: Formatting Check (Black)
         run: black --check .
+
       - name: Lint (Ruff)
         run: ruff check .
+
       - name: Unit Tests
         run: |
           export PYTHONPATH=$PYTHONPATH:.
@@ -34,9 +40,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: hashicorp/setup-terraform@v3
+
       - name: Terraform Format
         run: terraform -chdir=infra fmt -check -recursive
+
       - name: Terraform Init & Validate
         run: |
           terraform -chdir=infra init -backend=false
@@ -47,7 +56,9 @@ jobs:
     needs: [python-validation]
     steps:
       - uses: actions/checkout@v4
+
       - uses: databricks/setup-cli@v0.2.1
+
       - name: Bundle Validate (Dev)
         run: databricks bundle validate -t dev
         env:

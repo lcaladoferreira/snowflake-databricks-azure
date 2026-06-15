@@ -1,8 +1,10 @@
-from pyspark.sql import SparkSession, DataFrame
-from pyspark.sql.functions import col, upper, trim, to_timestamp, row_number
-from pyspark.sql.window import Window
-from src.config.config import Config
 import os
+
+from pyspark.sql import DataFrame, SparkSession
+from pyspark.sql.functions import col, row_number, to_timestamp, upper, trim
+from pyspark.sql.window import Window
+
+from src.config.config import Config
 
 logger = Config.get_logger(__name__)
 
@@ -97,18 +99,22 @@ class SilverTransformer:
         window = Window.partitionBy(*pks).orderBy(col("_bronze_at").desc())
         deduped_df = df.withColumn("rn", row_number().over(window)).filter("rn = 1").drop("rn")
 
-        if not os.path.exists(target_path) and Config.EXECUTION_MODE == "demo":
+        if not os.path.exists(target_path):
             deduped_df.write.format("delta").mode("overwrite").save(target_path)
         else:
-            deduped_df.createOrReplaceTempView("src")
-            merge_condition = " AND ".join([f"t.{c} = s.{c}" for c in pks])
+            # Use DeltaTable API for better local/demo compatibility
+            from delta.tables import DeltaTable
 
-            # Using Spark SQL for Merge as it's most compatible for the template
-            self.spark.sql(f"""
-                MERGE INTO delta.`{target_path}` t
-                USING src s
-                ON {merge_condition}
-                WHEN MATCHED THEN UPDATE SET *
-                WHEN NOT MATCHED THEN INSERT *
-            """)
+            target_table = DeltaTable.forPath(self.spark, target_path)
+
+            merge_condition = " AND ".join([f"target.{c} = source.{c}" for c in pks])
+
+            (
+                target_table.alias("target")
+                .merge(deduped_df.alias("source"), merge_condition)
+                .whenMatchedUpdateAll()
+                .whenNotMatchedInsertAll()
+                .execute()
+            )
+
         logger.info(f"Silver: {table_name} upserted.")

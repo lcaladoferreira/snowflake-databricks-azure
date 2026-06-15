@@ -1,16 +1,18 @@
-from pyspark.sql import SparkSession, DataFrame
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import (
     col,
     count,
-    sum as _sum,
+    current_timestamp,
     min as _min,
     max as _max,
-    current_timestamp,
+    sum as _sum,
     when,
 )
+
 from src.config.config import Config
-from typing import Dict, Any, List, Optional
-from datetime import datetime
 
 logger = Config.get_logger(__name__)
 
@@ -23,7 +25,10 @@ class ReconciliationEngine:
         self.results_path = Config.get_storage_path("gold", "reconciliation_results")
 
     def reconcile(
-        self, table_name: str, numeric_cols: List[str], date_col: Optional[str] = None
+        self,
+        table_name: str,
+        numeric_cols: List[str],
+        date_col: Optional[str] = None,
     ) -> None:
         """Runs comprehensive parity checks between Snowflake and Databricks."""
         logger.info(f"Reconciling table: {table_name}")

@@ -1,4 +1,6 @@
 import sys
+from typing import Any
+
 from src.config.config import Config
 from src.extraction.demo_extractor import DemoExtractor
 from src.extraction.snowflake_extractor import SnowflakeExtractor
@@ -23,19 +25,19 @@ def run_pipeline() -> None:
         # 1. Extraction Phase
         logger.info("--- Phase 1: Extraction ---")
         if Config.EXECUTION_MODE == "demo":
-            extractor = DemoExtractor()
+            extractor: Any = DemoExtractor()
             extractor.extract_all()
         else:
             extractor = SnowflakeExtractor()
             tables = ["CUSTOMERS", "PRODUCTS", "ORDERS", "ORDER_ITEMS", "PAYMENTS"]
             for table in tables:
-                # Example: Incremental for large tables, full for small
+                # Incremental for large tables, full for small
                 incremental_col = "UPDATED_AT" if table in ["ORDERS", "PAYMENTS"] else None
                 extractor.extract_table(table, incremental_col=incremental_col)
 
         # Initialize Spark for Medallion Processing
         spark = get_spark_session(f"MigrationPipeline_{Config.EXECUTION_MODE}")
-        batch_id = extractor.batch_id if hasattr(extractor, "batch_id") else "manual_run"
+        batch_id = getattr(extractor, "batch_id", "manual_run")
 
         # 2. Bronze Phase
         logger.info("--- Phase 2: Bronze Ingestion ---")
