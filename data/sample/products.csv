@@ -1,0 +1,21 @@
+product_id,product_name,category,price
+1,Product A,Garden,315.42
+2,Product B,Garden,172.14
+3,Product C,Garden,41.14
+4,Product D,Home,162.38
+5,Product E,Home,169.34
+6,Product F,Home,367.51
+7,Product G,Electronics,322.4
+8,Product H,Garden,444.73
+9,Product I,Home,241.39
+10,Product J,Home,68.6
+11,Product K,Electronics,359.49
+12,Product L,Home,382.78
+13,Product M,Electronics,285.03
+14,Product N,Clothing,387.77
+15,Product O,Home,251.96
+16,Product P,Clothing,266.14
+17,Product Q,Electronics,219.5
+18,Product R,Garden,22.46
+19,Product S,Home,62.87
+20,Product T,Electronics,25.4
