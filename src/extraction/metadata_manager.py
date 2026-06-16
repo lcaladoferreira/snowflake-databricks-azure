@@ -7,8 +7,10 @@ for incremental loads.
 import json
 import os
 from datetime import datetime
-from typing import Optional, Any
+from typing import Any, Optional
+
 from src.config.config import Config
+
 
 class MetadataManager:
     """Manages extraction metadata and watermarks.

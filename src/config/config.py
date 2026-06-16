@@ -4,9 +4,10 @@ This module handles loading environment variables and providing a centralized
 Config class for all pipeline components.
 """
 
-import os
 import logging
-from typing import Optional, Dict, Any
+import os
+from typing import Any, Dict, Optional
+
 from dotenv import load_dotenv
 
 load_dotenv()

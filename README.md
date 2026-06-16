@@ -6,6 +6,7 @@
 [![Terraform](https://img.shields.io/badge/Terraform-IaC-purple.svg)](https://www.terraform.io/)
 [![Spark](https://img.shields.io/badge/Apache_Spark-v3.5.0-red.svg)](https://spark.apache.org/)
 [![Snowflake](https://img.shields.io/badge/Snowflake-Source-blue.svg)](https://www.snowflake.com/)
+[![Coverage](https://img.shields.io/badge/coverage-54%25-orange.svg)]()
 
 A production-ready data engineering framework designed to accelerate the migration of complex data workloads from Snowflake to the Azure Databricks Lakehouse. This project implements industry-standard best practices including Medallion Architecture, Unity Catalog governance, and Infrastructure as Code.
 
@@ -20,8 +21,6 @@ Enterprise organizations migrating from Snowflake to Databricks often face signi
 ## 🏗️ Architecture
 
 The framework follows a multi-hop **Medallion Architecture** governed by **Unity Catalog**.
-
-![Architecture Diagram](docs/architecture.png)
 
 ```mermaid
 graph LR

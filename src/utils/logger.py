@@ -6,6 +6,7 @@ Provides a standardized way to obtain a logger with consistent formatting.
 import logging
 import sys
 
+
 def get_logger(name: str) -> logging.Logger:
     """Returns a configured logger with a stream handler.
 

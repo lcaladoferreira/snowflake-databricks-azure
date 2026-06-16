@@ -4,9 +4,11 @@ Handles the initialization and configuration of Spark sessions for both
 local (demo) and Databricks (production) environments.
 """
 
-from pyspark.sql import SparkSession
 from delta import configure_spark_with_delta_pip
+from pyspark.sql import SparkSession
+
 from src.config.config import Config
+
 
 def get_spark_session(app_name: str = "SnowflakeMigration") -> SparkSession:
     """Initializes or retrieves a Spark session.

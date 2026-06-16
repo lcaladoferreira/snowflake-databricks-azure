@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from jobs.gold.silver_to_gold import create_gold_marts
 from tests.pyspark_test_base import PySparkTestCase

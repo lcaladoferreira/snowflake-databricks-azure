@@ -1,4 +1,3 @@
-import os
 
 from delta.tables import DeltaTable
 from pyspark.sql import DataFrame, SparkSession
