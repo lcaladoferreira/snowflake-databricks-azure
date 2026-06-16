@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from src.validation.reconciliation_engine import ReconciliationEngine
 from tests.pyspark_test_base import PySparkTestCase
@@ -46,6 +46,27 @@ class TestReconciliation(PySparkTestCase):
         ) as mock_create:
             self.engine._persist_report(mock_report)
             mock_create.assert_called()
+
+    @patch("snowflake.connector.connect")
+    def test_get_source_metrics_calls_snowflake(self, mock_connect):
+        # Setup mock connection and cursor
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_connect.return_value = mock_conn
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+        mock_conn.__enter__.return_value = mock_conn
+
+        # Mock cursor description and fetchone
+        mock_cursor.description = [("ROW_COUNT",)]
+        mock_cursor.fetchone.return_value = (500,)
+
+        # Execution
+        metrics = self.engine._get_source_metrics("fact_orders", [], None)
+
+        # Assertions
+        self.assertEqual(metrics["row_count"], 500)
+        mock_cursor.execute.assert_called_once()
+        self.assertIn("FROM FACT_ORDERS", mock_cursor.execute.call_args[0][0])
 
 
 if __name__ == "__main__":

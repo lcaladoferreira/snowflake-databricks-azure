@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+import snowflake.connector
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import (
     col,
@@ -38,6 +39,24 @@ class ReconciliationEngine:
         """
         self.spark = spark
         self.results_path = Config.get_storage_path("gold", "reconciliation_results")
+        self.allowed_tables = {
+            "fact_orders",
+            "dim_customers",
+            "dim_products",
+            "dim_dates",
+        }
+
+    def _get_snowflake_connection(self) -> snowflake.connector.SnowflakeConnection:
+        """Establishes a connection to Snowflake.
+
+        Returns:
+            snowflake.connector.SnowflakeConnection: A Snowflake connection object.
+        """
+        try:
+            return snowflake.connector.connect(**Config.get_snowflake_config())
+        except snowflake.connector.Error as e:
+            logger.error(f"Failed to connect to Snowflake: {str(e)}")
+            raise
 
     def reconcile(
         self,
@@ -59,9 +78,7 @@ class ReconciliationEngine:
         target_df = self.spark.read.format("delta").load(
             Config.get_storage_path("gold", table_name)
         )
-        target_metrics = self._calculate_target_metrics(
-            target_df, numeric_cols, date_col
-        )
+        target_metrics = self._calculate_target_metrics(target_df, numeric_cols, date_col)
 
         report = self._compare_metrics(table_name, source_metrics, target_metrics)
         self._persist_report(report)
@@ -99,9 +116,7 @@ class ReconciliationEngine:
     def _get_source_metrics(
         self, table_name: str, num_cols: List[str], date_col: Optional[str]
     ) -> Dict[str, Any]:
-        """Fetches metrics from Snowflake (Simulated).
-
-        In production, this would perform a direct query to Snowflake.
+        """Fetches metrics from Snowflake.
 
         Args:
             table_name: Name of the source table.
@@ -110,12 +125,43 @@ class ReconciliationEngine:
 
         Returns:
             Dict[str, Any]: Source metrics.
+
+        Raises:
+            ValueError: If the table name is not in the allowlist.
+            snowflake.connector.Error: If a Snowflake error occurs.
         """
-        metrics = {"row_count": 500}
-        for c in num_cols:
-            metrics[f"sum_{c}"] = 125000.0
-            metrics[f"nulls_{c}"] = 0
-        return metrics
+        if table_name.lower() not in self.allowed_tables:
+            raise ValueError(f"Table {table_name} is not in the allowed list.")
+
+        sf_table = table_name.upper()
+        sql_parts = ["COUNT(*) AS ROW_COUNT"]
+
+        for col_name in num_cols:
+            col_upper = col_name.upper()
+            sql_parts.append(f"SUM({col_upper}) AS SUM_{col_upper}")
+            sql_parts.append(
+                f"COUNT(CASE WHEN {col_upper} IS NULL THEN 1 END) AS NULLS_{col_upper}"
+            )
+
+        if date_col:
+            dc_upper = date_col.upper()
+            sql_parts.append(f"MIN({dc_upper}) AS MIN_DATE")
+            sql_parts.append(f"MAX({dc_upper}) AS MAX_DATE")
+
+        sql = f"SELECT {', '.join(sql_parts)} FROM {sf_table}"
+        logger.info(f"Executing Snowflake metrics query: {sql}")
+
+        try:
+            with self._get_snowflake_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(sql)
+                    row = cur.fetchone()
+                    if not row:
+                        return {}
+                    return {desc[0].lower(): val for desc, val in zip(cur.description, row)}
+        except snowflake.connector.Error as e:
+            logger.error(f"Snowflake error during metrics retrieval: {str(e)}")
+            raise
 
     def _compare_metrics(self, table_name: str, source: dict, target: dict) -> dict:
         """Compares source and target metrics and identifies discrepancies.
@@ -129,9 +175,9 @@ class ReconciliationEngine:
             dict: Reconciliation report.
         """
         errors = []
-        if source["row_count"] != target["row_count"]:
+        if source.get("row_count") != target.get("row_count"):
             errors.append(
-                f"Count mismatch: SF={source['row_count']}, DB={target['row_count']}"
+                f"Count mismatch: SF={source.get('row_count')}, DB={target.get('row_count')}"
             )
 
         status = "PASSED" if not errors else "FAILED"

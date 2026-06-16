@@ -1,0 +1,4 @@
+payment_id,order_id,payment_method,payment_amount,payment_date
+501,1,CREDIT_CARD,1500.00,2024-01-01
+502,2,PAYPAL,800.00,2024-01-05
+503,3,CREDIT_CARD,1200.00,2024-01-10

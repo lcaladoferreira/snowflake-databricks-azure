@@ -1,5 +1,6 @@
 import os
 
+from delta.tables import DeltaTable
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import col, row_number, to_timestamp, trim, upper
 from pyspark.sql.window import Window
@@ -111,11 +112,15 @@ class SilverTransformer:
             df.withColumn("rn", row_number().over(window)).filter("rn = 1").drop("rn")
         )
 
-        if not os.path.exists(target_path):
+        is_delta = False
+        try:
+            is_delta = DeltaTable.isDeltaTable(self.spark, target_path)
+        except Exception:
+            is_delta = False
+
+        if not is_delta:
             deduped_df.write.format("delta").mode("overwrite").save(target_path)
         else:
-            from delta.tables import DeltaTable
-
             target_table = DeltaTable.forPath(self.spark, target_path)
             merge_condition = " AND ".join([f"target.{c} = source.{c}" for c in pks])
             (

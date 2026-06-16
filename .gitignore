@@ -20,3 +20,22 @@ pipeline_output.log
 # IDE
 .vscode/
 .idea/
+.coverage
+coverage.xml
+pipeline_final.log
+demo_run.log
+demo_run_final.log
+demo_run_final_2.log
+validation_proof.log
+final_validation.log
+demo_run_final.log
+pipeline.log
+demo_run.log
+final_validation.log
+pipeline_final.log
+validation_proof.log
+pipeline.log
+*.log
+.pytest_cache
+.ruff_cache
+.mypy_cache
